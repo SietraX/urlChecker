@@ -1,0 +1,42 @@
+:root {
+    --border-width: 3;
+    --border-radius: 4;
+  }
+  body {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: sans-serif;  
+  }
+  [type='url'] {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    border-width: calc(var(--border-width) * 1px);
+    border-style: solid;
+    border-color: black;
+    border-radius: calc(var(--border-radius) * 1px);
+    text-align: center;
+    outline: transparent;
+    width: 100%;
+    transition: border-color calc(var(--transition, 0.2) * 1s) ease;
+  }
+  
+  .result.success {
+      color: green;  
+    }
+    
+  .result.error {
+      color: red;  
+    }
+  
+  .parent {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(2, 1fr);
+      grid-row-gap: 10px;
+  }
+      
+  .result { grid-area: 2 / 3 / 3 / 4; }
+  .input { grid-area: 3 / 3 / 4 / 4; }
+  
