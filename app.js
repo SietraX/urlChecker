@@ -3,6 +3,8 @@ const INVALID_URL_MESSAGE = "Url is Invalid";
 const VALID_URL_MESSAGE = "Url is Valid";
 const EMPTY_URL_MESSAGE = "Please enter an URL";
 
+const checkUrlTargetThrottled = throttle(checkUrlTarget, 1000);
+
 function handleKeyUp(event) {
   const inputUrl = event.target.value;
 
@@ -15,16 +17,16 @@ function handleKeyUp(event) {
 
   if (isUrlValid) {
     setMessage(VALID_URL_MESSAGE);
-    checkUrlTarget(inputUrl)
-      .then((response) => {
+    checkUrlTargetThrottled(inputUrl).then((response) => {
+      if (response.headers["content-type"]) {
         setMessage(
           `${VALID_URL_MESSAGE} \n and Mime Type is ${response.headers["content-type"]}`,
           "success"
         );
-      })
-      .catch(() => {
+      } else {
         setMessage(`${VALID_URL_MESSAGE} but target not exist`, "error");
-      });
+      }
+    });
   } else {
     setMessage(INVALID_URL_MESSAGE);
   }
@@ -53,27 +55,21 @@ function isValidProtocolUrl(input) {
   }
 }
 
-const checkUrlTarget = () => {
-  return new Promise((resolve, reject) => {
-    throttle((url) => {
-      window.setTimeout(() => {
-        const mimeType = getRandomMimeType();
-        if (mimeType) {
-          resolve({
-            request: {
-              target: url,
-            },
-            headers: {
-              "content-type": mimeType,
-            },
-          });
-        } else {
-          reject();
-        }
-      }, MOCK_API_DELAY);
-    }, 500).apply();
+function checkUrlTarget(url) {
+  return new Promise((resolve) => {
+    window.setTimeout(() => {
+      const mimeType = getRandomMimeType();
+      resolve({
+        request: {
+          target: url,
+        },
+        headers: {
+          "content-type": mimeType,
+        },
+      });
+    }, MOCK_API_DELAY);
   });
-};
+}
 
 function getRandomMimeType() {
   const mimeTypes = [
@@ -93,23 +89,34 @@ window.addEventListener("load", () => {
   document.querySelector("#input-url").addEventListener("keyup", handleKeyUp);
 });
 
-function throttle(func, limit) {
-  let lastFunc;
-  let lastRan;
+function throttle(func, wait, options) {
+  let context, args, result;
+  let timeout = null;
+  let previous = 0;
+  if (!options) options = {};
+  const later = function () {
+    previous = options.leading === false ? 0 : Date.now();
+    timeout = null;
+    result = func.apply(context, args);
+    if (!timeout) context = args = null;
+  };
   return function () {
-    const context = this;
-    const args = arguments;
-    if (!lastRan) {
-      func.apply(context, args);
-      lastRan = Date.now();
-    } else {
-      clearTimeout(lastFunc);
-      lastFunc = setTimeout(function () {
-        if (Date.now() - lastRan >= limit) {
-          func.apply(context, args);
-          lastRan = Date.now();
-        }
-      }, limit - (Date.now() - lastRan));
+    const now = Date.now();
+    if (!previous && options.leading === false) previous = now;
+    const remaining = wait - (now - previous);
+    context = this;
+    args = arguments;
+    if (remaining <= 0 || remaining > wait) {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      previous = now;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    } else if (!timeout && options.trailing !== false) {
+      timeout = setTimeout(later, remaining);
     }
+    return result;
   };
 }
